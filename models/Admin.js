@@ -16,9 +16,10 @@ const adminSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  permissions: {
-    type: [String], // E.g., ['manage-users', 'view-reports']
-    default: [],
+  contactNumber: {
+    type: String,
+    required: true,
+    trim: true,
   },
   createdAt: {
     type: Date,

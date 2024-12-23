@@ -12,6 +12,10 @@ const moderatorSchema = new mongoose.Schema({
     unique: true,
     trim: true,
   },
+  contactNumber: {
+    type: String,
+    required: true,
+  },
   password: {
     type: String,
     required: true,
@@ -19,6 +23,11 @@ const moderatorSchema = new mongoose.Schema({
   managedSections: {
     type: [String], // E.g., ['comments', 'posts']
     default: [],
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Admin",
+    required: true,
   },
   createdAt: {
     type: Date,

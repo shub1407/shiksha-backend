@@ -17,6 +17,7 @@ import {
   createSection,
   assignStudentsToSection,
   assignTeacherToSection,
+  viewTeacherAssignmentToSection,
 } from "../controllers/shared/userController.js"
 
 const router = express.Router()
@@ -31,18 +32,21 @@ router.get("/moderators", getAllModerators)
 
 //teacher
 router.post("/create-teacher", createTeacher)
-router.get("/teachers", viewAllTeacher)
-router.get("/teachers/:classTaught", viewTeacherByClass)
+router.get("/view-teachers", viewAllTeacher)
+router.get("/view-teachers/:class", viewTeacherByClass)
+router.post("/assign-teacher", assignTeacherToSection)
 
 //student
 router.post("/create-student", createStudent)
 router.get("/students", viewAllStudent)
 router.get("/students/:class", viewStudentByClass)
-//class
-//create section
 router.post("/create-section", createSection)
-//assign students to section
 router.post("/assign-students", assignStudentsToSection)
-//assign teacher to section
-router.post("/assign-teacher", assignTeacherToSection)
+
+//section
+router.get(
+  "/section/view-teacher-assignment/:class",
+  viewTeacherAssignmentToSection
+)
+
 export default router

@@ -34,6 +34,7 @@ const teacherSchema = new mongoose.Schema({
   section: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Section",
+    defaullt: null,
   },
   subject: {
     type: String,
@@ -42,10 +43,10 @@ const teacherSchema = new mongoose.Schema({
     enum: ["Maths", "Science"],
   },
   assignedDays: {
-    type: Number, // E.g., ['Monday', 'Tuesday', 'Wednesday']
-    enum: [0, 1],
+    type: String, // E.g., ['Monday', 'Tuesday', 'Wednesday']
+    enum: ["0", "1"],
   },
-  Year: {
+  year: {
     type: Number,
     required: true,
   },

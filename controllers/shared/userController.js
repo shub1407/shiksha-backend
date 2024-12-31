@@ -2,6 +2,7 @@ import Teacher from "../../models/Teacher.js"
 import Student from "../../models/Student.js"
 import Section from "../../models/Section.js"
 import SectionTeacher from "../../models/SectionTeacher.js"
+import Class from "../../models/Class.js"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcryptjs"
 
@@ -17,7 +18,7 @@ export const createTeacher = async (req, res) => {
       class: studentClass,
       subject,
       assignedDays,
-      Year,
+      year,
     } = req.body
 
     const hashedPassword = await bcrypt.hash(password, 12)
@@ -36,7 +37,7 @@ export const createTeacher = async (req, res) => {
       subject,
       class: studentClass,
       assignedDays,
-      Year,
+      year,
     })
     await newTeacher.save()
     res.status(201).json({
@@ -64,13 +65,103 @@ export const viewAllTeacher = async (req, res) => {
 //View teachers by class
 export const viewTeacherByClass = async (req, res) => {
   try {
-    const { classTaught } = req.params
-    const teachers = await Teacher.find({ classTaught })
-    res.status(200).json({
-      error: false,
-      message: "Teacher fetched successfully",
-      data: teachers,
-    })
+    const { class: studentClass } = req.params
+    let { section, day } = req.query
+    //CASE 1: all section & all day-->all available teacher of particular class
+    if (section == "all" && day == "all") {
+      const teachers = await Teacher.find({
+        class: studentClass,
+      })
+      return res.status(200).json({
+        error: false,
+        message: "Teacher fetched successfully",
+        data: teachers,
+      })
+    }
+    //CASE2: all unassigned teacher of a class
+    if (section == "none" && day == "all") {
+      const teachers = await Teacher.find({
+        class: studentClass,
+        section: null,
+      })
+      return res.status(200).json({
+        error: false,
+        message: "Teacher fetched successfully",
+        data: teachers,
+      })
+    }
+    //CASE3: all unassigned teacher of a class on particular day
+    if (section == "none" && day != "all") {
+      const teachers = await Teacher.find({
+        class: studentClass,
+        section: null,
+        assignedDays: day,
+      })
+      return res.status(200).json({
+        error: false,
+        message: "Teacher fetched successfully",
+        data: teachers,
+      })
+    }
+    //CASE4:all teacher of a particular section
+    if (day == "all" && section != "all") {
+      const sectionId = await Section.findOne({
+        class: studentClass,
+        name: section,
+      })
+      if (!sectionId) {
+        return res.status(400).json({
+          error: true,
+          message: "Section not found",
+          data: null,
+        })
+      }
+      const teachers = await Teacher.find({
+        class: studentClass,
+        section: sectionId._id,
+      })
+      return res.status(200).json({
+        error: false,
+        message: "Teacher fetched successfully",
+        data: teachers,
+      })
+    }
+    //CASE5: all teacher of a particular day
+    if (section == "all" && day != "all") {
+      const teachers = await Teacher.find({
+        class: studentClass,
+        assignedDays: day,
+      })
+      return res.status(200).json({
+        error: false,
+        message: "Teacher fetched successfully",
+        data: teachers,
+      })
+    }
+    //CASE6: teacher of a particular section on a particular day
+    if (day != "all" && section != "all") {
+      const sectionId = await Section.findOne({
+        class: studentClass,
+        name: section,
+      })
+      if (!sectionId) {
+        return res.status(400).json({
+          error: true,
+          message: "Section not found",
+          data: null,
+        })
+      }
+      const teachers = await Teacher.find({
+        class: studentClass,
+        section: sectionId._id,
+        assignedDays: day,
+      })
+      return res.status(200).json({
+        error: false,
+        message: "Teacher fetched successfully",
+        data: teachers,
+      })
+    }
   } catch (error) {
     res.status(500).json({ error: true, message: error.message, data: null })
   }
@@ -220,13 +311,26 @@ export const createSection = async (req, res) => {
         .json({ error: true, message: "Section already exists", data: null })
     }
 
+    //add to class schema
+    let existedClass = await Class.findOne({ name: className })
+    console.log(existedClass)
+    if (!existedClass) {
+      const newClass = new Class({
+        name: className,
+        sections: [name],
+      })
+      newClass.save()
+    } else {
+      existedClass.sections.push(name)
+      existedClass.save()
+    }
     // Use className and name to create a new section
     const newSection = new Section({
       class: className,
       name,
     })
-
     await newSection.save()
+
     res.status(201).json({
       error: false,
       message: "Section created successfully",
@@ -260,6 +364,60 @@ export const assignStudentsToSection = async (req, res) => {
     res.status(200).json({
       error: false,
       message: "Student assigned to section successfully",
+    })
+  } catch (error) {
+    res.status(500).json({ error: true, message: error.message, data: null })
+  }
+}
+
+//view teacher assignment to section
+export const viewTeacherAssignmentToSection = async (req, res) => {
+  try {
+    const { class: studentClass } = req.params
+
+    // Check if the class exists
+    const existedClass = await Class.findOne({ name: studentClass })
+    if (!existedClass) {
+      return res
+        .status(400)
+        .json({ error: true, message: "Class not found", data: null })
+    }
+
+    const sections = existedClass.sections
+    const sectionTeachers = []
+
+    // Use for...of loop for asynchronous operations
+    for (const section of sections) {
+      const obj = {
+        section,
+        0: [],
+        1: [],
+      }
+
+      const sectionId = await Section.findOne({
+        class: studentClass,
+        name: section,
+      })
+      obj.sectionId = sectionId._id
+
+      if (sectionId) {
+        const teachers = await SectionTeacher.find({ sectionId: sectionId._id })
+
+        teachers.forEach((teacher) => {
+          obj[teacher.scheduledDay].push({
+            teacherId: teacher._id,
+            subject: teacher.subject,
+          })
+        })
+      }
+
+      sectionTeachers.push(obj)
+    }
+
+    res.status(200).json({
+      error: false,
+      message: "Teacher assignment to section fetched successfully",
+      data: { class: studentClass, sectionTeachers },
     })
   } catch (error) {
     res.status(500).json({ error: true, message: error.message, data: null })

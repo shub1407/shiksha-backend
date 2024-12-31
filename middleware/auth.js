@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken"
 function auth(req, res, next) {
-  if (!req.header("Authorization"))
+  if (!req.cookies("Authorization"))
     return res
       .status(401)
       .json({ message: "Access denied, no token provided", error: true })
@@ -9,7 +9,7 @@ function auth(req, res, next) {
 
   if (!token)
     return res
-      .status(401)
+      .status(200)
       .json({ message: "Access denied, no token provided", error: true })
   try {
     const payload = jwt.verify(token, process.env.JWT_KEY)

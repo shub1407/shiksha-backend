@@ -6,9 +6,9 @@ const sectionTeacherSchema = new mongoose.Schema({
     required: true,
   },
   scheduledDay: {
-    type: Number,
+    type: String,
     required: true,
-    enum: [0, 1],
+    enum: ["0", "1"],
   },
   teacherId: {
     type: mongoose.Schema.Types.ObjectId,

@@ -18,6 +18,8 @@ import {
   assignStudentsToSection,
   assignTeacherToSection,
   viewTeacherAssignmentToSection,
+  viewClassBySection,
+  viewClassBySectionInDetail,
 } from "../controllers/shared/userController.js"
 
 const router = express.Router()
@@ -48,5 +50,12 @@ router.get(
   "/section/view-teacher-assignment/:class",
   viewTeacherAssignmentToSection
 )
+
+//class
+
+router.get("/class/:class", viewClassBySection)
+router.get("/class-detail/:sectionId", viewClassBySectionInDetail)
+
+// createAdmin,
 
 export default router

@@ -31,6 +31,10 @@ const studentSchema = new mongoose.Schema({
     ref: "Section",
     default: null,
   },
+  sectionName: {
+    type: String,
+    default: null,
+  },
   admNo: {
     type: Number,
     unique: true,

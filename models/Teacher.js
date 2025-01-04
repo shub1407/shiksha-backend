@@ -36,6 +36,10 @@ const teacherSchema = new mongoose.Schema({
     ref: "Section",
     defaullt: null,
   },
+  sectionName: {
+    type: String,
+    trim: true,
+  },
   subject: {
     type: String,
     required: true,

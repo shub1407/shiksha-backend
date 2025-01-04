@@ -183,6 +183,9 @@ export const assignTeacherToSection = async (req, res) => {
         .json({ error: true, message: "Section not found", data: null })
     }
     teacher.section = sectionId
+    teacher.sectionName = section.name
+    section.teachers.push(teacherId)
+    await section.save()
     //saving to SectionTeacher
     await teacher.save()
     const newSectionTeacher = new SectionTeacher({
@@ -235,7 +238,7 @@ export const createStudent = async (req, res) => {
 //View All student
 export const viewAllStudent = async (req, res) => {
   try {
-    const students = await Student.find()
+    const students = await Student.find().sort({ sectionName: 1 })
     res.status(200).json({
       error: false,
       message: "All students fetched successfully",
@@ -260,7 +263,7 @@ export const viewStudentByClass = async (req, res) => {
         students = await Student.find({
           class: studentClass,
           section: null,
-        })
+        }).sort({ sectionName: 1 })
       } else {
         sectionId = await Section.findOne({
           class: studentClass,
@@ -271,7 +274,7 @@ export const viewStudentByClass = async (req, res) => {
           students = await Student.find({
             class: studentClass,
             section: sectionId._id,
-          })
+          }).sort({ sectionName: 1 })
         } else {
           return res.status(400).json({
             error: true,
@@ -285,7 +288,7 @@ export const viewStudentByClass = async (req, res) => {
     else {
       students = await Student.find({
         class: studentClass,
-      })
+      }).sort({ sectionName: 1 })
     }
 
     res.status(200).json({
@@ -357,10 +360,13 @@ export const assignStudentsToSection = async (req, res) => {
           .status(400)
           .json({ error: true, message: "Student not found", data: null })
       }
-
+      student.class = section.class
       student.section = sectionId
+      student.sectionName = section.name
       await student.save()
     })
+    section.students.push(...studentId)
+    await section.save()
     res.status(200).json({
       error: false,
       message: "Student assigned to section successfully",
@@ -418,6 +424,41 @@ export const viewTeacherAssignmentToSection = async (req, res) => {
       error: false,
       message: "Teacher assignment to section fetched successfully",
       data: { class: studentClass, sectionTeachers },
+    })
+  } catch (error) {
+    res.status(500).json({ error: true, message: error.message, data: null })
+  }
+}
+
+//view class by section
+
+export const viewClassBySection = async (req, res) => {
+  const { class: studentClass } = req.params
+  try {
+    const data = await Section.find({ class: studentClass })
+    res.status(200).json({
+      error: false,
+      message: "Class fetched successfully",
+      data: data,
+    })
+  } catch (error) {
+    res.status(500).json({ error: true, message: error.message, data: null })
+  }
+}
+
+export const viewClassBySectionInDetail = async (req, res) => {
+  const { sectionId } = req.params
+  console.log(sectionId)
+  try {
+    const data = await Section.findById(sectionId).populate([
+      "teachers",
+      "students",
+    ])
+
+    res.status(200).json({
+      error: false,
+      message: "Class fetched successfully",
+      data: data,
     })
   } catch (error) {
     res.status(500).json({ error: true, message: error.message, data: null })

@@ -50,6 +50,10 @@ const teacherSchema = new mongoose.Schema({
     type: String, // E.g., ['Monday', 'Tuesday', 'Wednesday']
     enum: ["0", "1"],
   },
+  totalDaysPresent: {
+    type: Number,
+    default: 0,
+  },
   year: {
     type: Number,
     required: true,

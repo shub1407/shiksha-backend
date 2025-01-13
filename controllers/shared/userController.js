@@ -52,7 +52,7 @@ export const createTeacher = async (req, res) => {
 //View All teacher
 export const viewAllTeacher = async (req, res) => {
   try {
-    const teachers = await Teacher.find()
+    const teachers = await Teacher.find().sort({ class: 1, sectionName: 1 })
     res.status(200).json({
       error: false,
       message: "All teachers fetched successfully",

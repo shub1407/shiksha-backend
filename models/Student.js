@@ -39,6 +39,10 @@ const studentSchema = new mongoose.Schema({
     type: Number,
     unique: true,
   },
+  totalDaysPresent: {
+    type: Number,
+    default: 0,
+  },
 
   createdAt: {
     type: Date,

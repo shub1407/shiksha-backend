@@ -14,6 +14,15 @@ const AttendanceSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
+  class: {
+    type: String,
+    required: true,
+  },
+  sectionName: {
+    type: String,
+    required: true,
+  },
+
   status: {
     type: String,
     enum: ["present", "absent", "on_leave"],

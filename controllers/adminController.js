@@ -1,5 +1,8 @@
 import Admin from "../models/Admin.js"
 import Moderator from "../models/Moderator.js"
+import Student from "../models/Student.js"
+import Teacher from "../models/Teacher.js"
+import Attendance from "../models/Attendance.js"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcryptjs"
 // Create a new admin
@@ -107,5 +110,29 @@ export const getAllModerators = async (req, res) => {
     })
   } catch (error) {
     res.status(500).json({ error: true, message: error.message, data: null })
+  }
+}
+//dashboard statd
+export const dashboardStats = async (req, res) => {
+  try {
+    const totalStudents = await Student.countDocuments()
+    const totalTeachers = await Teacher.countDocuments()
+    const presentToday = await Attendance.countDocuments({
+      date: new Date(),
+      status: "present",
+    })
+    const absentToday = await Attendance.countDocuments({
+      date: new Date(),
+      status: "absent",
+    })
+
+    res.json({
+      error: false,
+      message: "dashboard stats fetched successfully",
+      data: { totalStudents, totalTeachers, presentToday, absentToday },
+    })
+  } catch (error) {
+    console.error("Error fetching stats:", error)
+    res.status(500).send("Server Error")
   }
 }

@@ -103,24 +103,127 @@ export const markAttendance = async (req, res) => {
     res.status(500).json({ error: true, message: "Internal server error." })
   }
 }
-export const markAttendanceForTeacher = async (req, res) => {}
+export const markAttendanceForTeacher = async (req, res) => {
+  const { attendanceData, attendanceDate, markedById, markedByRole } = req.body
+
+  try {
+    const checkDate = new Date(attendanceDate)
+
+    // Check if the date is a holiday (non-recurring or recurring)
+    const isHoliday = await Holiday.findOne({
+      $or: [
+        { startDate: { $lte: checkDate }, endDate: { $gte: checkDate } }, // Non-recurring holidays
+        {
+          isRecurring: true,
+          startDate: { $lte: new Date(checkDate).setFullYear(2000) },
+          endDate: { $gte: new Date(checkDate).setFullYear(2000) },
+        }, // Recurring holidays
+      ],
+    })
+
+    if (isHoliday) {
+      return res.status(400).json({
+        error: true,
+        message: `Cannot mark attendance. ${isHoliday.description} is a holiday.`,
+      })
+    }
+
+    // Check if the date is a Sunday
+    if (checkDate.getDay() === 0) {
+      return res.status(400).json({
+        error: true,
+        message: "Cannot mark attendance. Sunday is a holiday.",
+      })
+    }
+    //check if the attendance is not marked on that day
+
+    // Prepare attendance records
+    const attendanceRecords = attendanceData.map((teacher) => ({
+      userId: teacher.id,
+      userType: "teacher",
+      class: teacher.class,
+      sectionName: teacher.sectionName,
+      date: checkDate,
+      status: teacher.status,
+      markedById,
+      markedByRole,
+    }))
+
+    // Convert attendance records into bulkWrite operations
+    const bulkOperations = attendanceRecords.map((record) => ({
+      updateOne: {
+        filter: {
+          userId: record.userId,
+          date: record.date, // Ensure uniqueness based on userId and date
+          class: record.class,
+          sectionName: record.sectionName,
+        },
+        update: { $set: record }, // Update existing record with new data
+        upsert: true, // Insert if no matching document is found
+      },
+    }))
+
+    // Perform bulkWrite operation
+    await Attendance.bulkWrite(bulkOperations)
+    //update total present days
+    const prsesentTeacher = attendanceData.filter((student) => {
+      if (student.status === "present") return student.id
+    })
+    console.log("present student iid")
+    console.log(prsesentTeacher)
+    await Teacher.updateMany(
+      {
+        _id: {
+          $in: prsesentTeacher.map((teacher) => teacher.id),
+        },
+      },
+      {
+        $inc: { totalDaysPresent: 1 },
+      }
+    )
+
+    res.status(201).json({
+      error: false,
+      message: "Attendance marked successfully for all teachers.",
+      data: attendanceRecords,
+    })
+  } catch (error) {
+    console.error("Error marking attendance:", error)
+    res.status(500).json({ error: true, message: "Internal server error." })
+  }
+}
 //checking if attendance is already marked of particular section of particular class on particular data
 export const checkAttendanceStatusOnDay = async (req, res) => {
   const { classInput, sectionInput, attendanceDate, userType } = req.body
   try {
     const userModel = userType === "student" ? Student : Teacher
     const checkDate = new Date(attendanceDate)
-    const existingAttendance = await Attendance.find({
-      userType,
-      class: classInput,
-      sectionName: sectionInput,
-      date: checkDate,
-    })
-      .populate({
-        path: "userId", // Field to populate
-        model: userModel, // Model to use for population
+    let existingAttendance
+    if (userType === "student") {
+      existingAttendance = await Attendance.find({
+        userType,
+        class: classInput,
+        sectionName: sectionInput,
+        date: checkDate,
       })
-      .sort({ admNo: 1 })
+        .populate({
+          path: "userId", // Field to populate
+          model: userModel, // Model to use for population
+        })
+        .sort({ admNo: 1 })
+    }
+    if (userType === "teacher") {
+      existingAttendance = await Attendance.find({
+        userType,
+        date: checkDate,
+        class: classInput,
+      })
+        .populate({
+          path: "userId", // Field to populate
+          model: userModel, // Model to use for population
+        })
+        .sort({ class: 1 })
+    }
 
     if (existingAttendance.length > 0) {
       // If attendance is marked, populate the user details with the attendance record
@@ -354,6 +457,7 @@ export const viewAllHolidays = async (req, res) => {
 export const getAttendanceByClassAndSection = async (req, res) => {
   try {
     const { class: className, sectionName, month, year } = req.params
+    const { userType } = req.body
 
     // Validate input
     if (!className || !sectionName || !month || !year) {
@@ -367,14 +471,22 @@ export const getAttendanceByClassAndSection = async (req, res) => {
     // Convert month and year to a date range
     const startDate = new Date(year, month - 1, 1) // Start of the month
     const endDate = new Date(year, month, 0) // End of the month
+    let users
+    if (userType === "student") {
+      users = await Student.find({
+        class: className,
+        sectionName,
+      }).lean()
+    }
+    if (userType === "teacher") {
+      users = await Teacher.find({
+        class: className,
+      })
+        .sort({ sectionName: 1, dayPref: 1 })
+        .lean()
+    }
 
-    // Fetch students in the given class and section
-    const students = await Student.find({
-      class: className,
-      sectionName,
-    }).lean()
-
-    if (students.length === 0) {
+    if (users.length === 0) {
       return res.status(404).json({
         error: true,
         message: "No students found in the specified class and section.",
@@ -390,11 +502,11 @@ export const getAttendanceByClassAndSection = async (req, res) => {
 
     // Organize attendance data by student
     const attendanceMap = attendanceRecords.reduce((acc, record) => {
-      const studentId = record.userId.toString()
-      if (!acc[studentId]) {
-        acc[studentId] = []
+      const userId = record.userId.toString()
+      if (!acc[userId]) {
+        acc[userId] = []
       }
-      acc[studentId].push({
+      acc[userId].push({
         date: record.date,
         status: record.status,
       })
@@ -402,13 +514,15 @@ export const getAttendanceByClassAndSection = async (req, res) => {
     }, {})
 
     // Prepare the final result
-    const result = students.map((student) => ({
-      _id: student._id,
-      name: student.name,
-      admNo: student.admNo,
-      class: student.class,
-      sectionName: student.sectionName,
-      attendance: attendanceMap[student._id.toString()] || [], // Default to empty array if no records
+    const result = users.map((user) => ({
+      _id: user._id,
+      name: user.name,
+      admNo: user.admNo,
+      rollNo: user.rollNo,
+      dayPref: user.assignedDays,
+      class: user.class,
+      sectionName: user.sectionName,
+      attendance: attendanceMap[user._id.toString()] || [], // Default to empty array if no records
     }))
 
     // Respond with the data

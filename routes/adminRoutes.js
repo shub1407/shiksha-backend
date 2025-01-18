@@ -5,6 +5,7 @@ import {
   loginAdmin,
   createModerator,
   getAllModerators,
+  dashboardStats,
 } from "../controllers/adminController.js"
 
 import {
@@ -20,6 +21,7 @@ import {
   viewTeacherAssignmentToSection,
   viewClassBySection,
   viewClassBySectionInDetail,
+  viewAllClasses,
 } from "../controllers/shared/userController.js"
 
 const router = express.Router()
@@ -27,7 +29,8 @@ const router = express.Router()
 router.post("/signup", createAdmin)
 router.get("/", getAllAdmins)
 router.post("/login", loginAdmin)
-
+//dashboard
+router.get("/dashboard-stats", dashboardStats)
 //moderator
 router.post("/create-moderator", createModerator)
 router.get("/moderators", getAllModerators)
@@ -55,6 +58,12 @@ router.get(
 
 router.get("/class/:class", viewClassBySection)
 router.get("/class-detail/:sectionId", viewClassBySectionInDetail)
+
+//all classes
+
+router.get("/all-classes", viewAllClasses)
+
+//class
 
 // createAdmin,
 

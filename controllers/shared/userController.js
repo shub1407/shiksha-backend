@@ -131,7 +131,7 @@ export const viewTeacherByClass = async (req, res) => {
       const teachers = await Teacher.find({
         class: studentClass,
         assignedDays: day,
-      })
+      }).sort({ sectionName: 1 })
       return res.status(200).json({
         error: false,
         message: "Teacher fetched successfully",
@@ -218,13 +218,21 @@ export const createStudent = async (req, res) => {
         .status(400)
         .json({ error: true, message: "Student already exists", data: null })
     }
+    //add class to class modell if not exist
+    const studentClassModel = await Class.findOne({ name: studentClass })
+    if (!studentClassModel) {
+      const newClass = new Class({
+        name: studentClass,
+      })
+      await newClass.save()
+    }
+    //create new student with class
     const newStudent = new Student({
       name,
       email,
       contactNumber,
       class: studentClass,
     })
-
     await newStudent.save()
     res.status(201).json({
       error: false,
@@ -238,7 +246,21 @@ export const createStudent = async (req, res) => {
 //View All student
 export const viewAllStudent = async (req, res) => {
   try {
-    const students = await Student.find().sort({ sectionName: 1 })
+    // const students = await Student.find().sort({
+    //   class: 1,
+    //   sectionName: 1,
+    //   admNo: 1,
+    // })
+    const students = await Student.aggregate([
+      {
+        $addFields: {
+          numericName: { $toDouble: "$class" },
+        },
+      },
+      {
+        $sort: { numericName: 1, sectionName: 1, admNo: 1 },
+      },
+    ])
     res.status(200).json({
       error: false,
       message: "All students fetched successfully",
@@ -459,6 +481,34 @@ export const viewClassBySectionInDetail = async (req, res) => {
       error: false,
       message: "Class fetched successfully",
       data: data,
+    })
+  } catch (error) {
+    res.status(500).json({ error: true, message: error.message, data: null })
+  }
+}
+export const viewAllClasses = async (req, res) => {
+  try {
+    const data = await Class.aggregate([
+      {
+        $addFields: {
+          numericName: { $toDouble: "$name" },
+        },
+      },
+      {
+        $sort: { numericName: 1 },
+      },
+    ])
+    //return class:[section as data]
+    let obj = {}
+    let classes = []
+    data.forEach((item) => {
+      obj[item.name] = item.sections
+      classes.push(item.name)
+    })
+    res.status(200).json({
+      error: false,
+      message: "All classes fetched successfully",
+      data: { sections: obj, classes: classes },
     })
   } catch (error) {
     res.status(500).json({ error: true, message: error.message, data: null })

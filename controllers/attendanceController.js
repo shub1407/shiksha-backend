@@ -51,7 +51,7 @@ export const markAttendance = async (req, res) => {
     // Prepare attendance records
     const attendanceRecords = attendanceData.map((student) => ({
       userId: student.id,
-      userType,
+      userType: "student",
       class: classInput,
       sectionName: sectionInput,
       date: checkDate,
@@ -208,10 +208,11 @@ export const checkAttendanceStatusOnDay = async (req, res) => {
       })
         .populate({
           path: "userId", // Field to populate
-          model: userModel, // Model to use for population
+          model: Student, // Model to use for population
         })
         .sort({ admNo: 1 })
     }
+    console.log(existingAttendance)
     if (userType === "teacher") {
       existingAttendance = await Attendance.find({
         userType,

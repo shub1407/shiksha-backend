@@ -27,6 +27,8 @@ export const login = async (req, res) => {
     )
     res.cookie("token", token, {
       httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 * 30, // 1 day in milliseconds (optional if expiresIn is set in JWT)
+      path: "/", // Cookie is accessible on the whole site
     })
     res
       .status(200)
